@@ -27,13 +27,13 @@ Open the project in Visual Studio, build it, and run the game.
 ## Screenshots
 
 ### Menu
-![Menu](screenshotsmenu.png)
+![Menu](screenshots/menu.png)
 
 ### Gameplay
-![Gameplay](screenshotsgameplay.png)
+![Gameplay](screenshots/gameplay.png)
 
 ### Game Over
-![Game Over](screenshotsgameover.png)
+![Game Over](screenshots/gameover.png)
 
 ### Pause
-![Menu](screenshotspause.png)
+![Pause](screenshots/pause.png)

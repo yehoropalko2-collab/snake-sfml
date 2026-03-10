@@ -22,7 +22,7 @@
 - Visual Studio
 
 ## How to Run
-Open the project in Visual Studio, build it, and run the game.
+Download the Releases file or Open the project in Visual Studio, build it, and run the game.
 
 ## Screenshots
 

@@ -32,6 +32,9 @@ Download the Releases file or Open the project in Visual Studio, build it, and r
 ### Gameplay
 ![Gameplay](screenshots/gameplay.png)
 
+### Bonus
+![Bonus](screenshots/bonus.png)
+
 ### Game Over
 ![Game Over](screenshots/gameover.png)
 

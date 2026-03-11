@@ -1,30 +1,50 @@
 #include "Game.h"
+#include <sstream>
+#include <iomanip>
 
+// ======================================================
+// GAME / GRID SETTINGS
+// ======================================================
+// Window size: 1440x1080
+// Cell size: 40x40
+// Grid size: 36x27
+//
+// 1440 / 40 = 36 cells
+// 1080 / 40 = 27 cells
 // ======================================================
 // SPRITE SHEET SETTINGS
 // ======================================================
-// snake-graphics.png
-// size: 320x256
-// grid: 5x4
-// tile size: 64x64
+// File: snake-graphics.png
+// Texture size: 320x256
+// Grid: 5 columns x 4 rows
+// Source tile size: 64x64
+// Tile coordinates: (col, row)
+// ======================================================
 //
-// Head:
-// (3,0)=up   (4,0)=right   (4,1)=down   (3,1)=left
+// HEAD
+// (3,0) = up
+// (4,0) = right
+// (4,1) = down
+// (3,1) = left
 //
-// Tail:
-// (3,2)=up   (4,2)=right   (4,3)=down   (3,3)=left
+// TAIL
+// (4,3) = up
+// (3,3) = right
+// (3,2) = down
+// (4,2) = left
 //
-// Body:
-// (1,0)=horizontal   (2,1)=vertical
+// BODY
+// (1,0) = horizontal
+// (2,1) = vertical
 //
-// Corners:
-// (0,0)=top-left
-// (2,0)=top-right
-// (0,1)=bottom-left
-// (2,2)=bottom-right
+// CORNERS
+// (0,0) = turn right + down
+// (2,0) = turn left + down
+// (0,1) = turn right + up
+// (2,2) = turn left + up
 //
-// Food:
-// (0,3)=apple
+// FOOD
+// (0,3) = apple
 // ======================================================
 
 sf::IntRect Game::tileRect(int col, int row)
@@ -75,8 +95,11 @@ void Game::loadAssets()
     snakeTexture.setSmooth(false);
     snakeSprite.setTexture(snakeTexture);
 
-    float scale = static_cast<float>(cellSize) / static_cast<float>(TILE);
-    snakeSprite.setScale(scale, scale);
+    float snakeScale = static_cast<float>(cellSize) / static_cast<float>(TILE);
+    snakeSprite.setScale(snakeScale, snakeScale);
+
+    float lemonScale = static_cast<float>(cellSize) / 512.f * 1.7f;
+    lemonSprite.setScale(lemonScale, lemonScale);
 
     // BACKGROUNDS
     if (!bgMenuTexture.loadFromFile("menuMap.png"))
@@ -86,6 +109,10 @@ void Game::loadAssets()
     if (!bgGameTexture.loadFromFile("map.png"))
         ok = false;
     bgGameSprite.setTexture(bgGameTexture);
+
+    if (!lemonTexture.loadFromFile("lemon.png"))
+        ok = false;
+    lemonSprite.setTexture(lemonTexture);
 
     // SOUNDS
     if (!gameOverBuffer.loadFromFile("hit.wav"))
@@ -99,6 +126,14 @@ void Game::loadAssets()
     if (!pauseBuffer.loadFromFile("pause.wav"))
         ok = false;
     pauseSound.setBuffer(pauseBuffer);
+
+    if (!bonusBuffer.loadFromFile("bonus.wav"))
+        ok = false;
+    bonusSound.setBuffer(bonusBuffer);
+
+    if (!bonusOnBuffer.loadFromFile("bonusOn.wav"))
+        ok = false;
+    bonusOnSound.setBuffer(bonusOnBuffer);
 
     // MUSIC
     if (!menuMusic.openFromFile("menu.ogg"))
@@ -115,6 +150,10 @@ void Game::loadAssets()
 
 void Game::setupUi()
 {
+    LemonBonusTitle = sf::Text("Bonus timer: 5.00", font, 34);
+    LemonBonusTitle.setFillColor(sf::Color::White);
+    LemonBonusTitle.setPosition(550.f, 15.f);
+
     menuTitle = sf::Text("SNAKE", font, 110);
     menuTitle.setFillColor(sf::Color::White);
 
@@ -198,6 +237,7 @@ void Game::resetGame()
 {
     dir = { 1, 0 };
     nextDir = dir;
+    applesSinceBonus = 0;
     directionChangedThisStep = false;
 
     snake.clear();
@@ -213,8 +253,10 @@ void Game::resetGame()
     score = 0;
     timer = 0.f;
     food = foodSpawn();
-
+    lemon = foodSpawn();
+    
     scoreText.setString("Score: 0");
+    LemonBonusTitle.setString("Bonus timer: 5.00");
     updateRecordText();
     updateMuteText();
 }
@@ -229,7 +271,9 @@ void Game::events()
     while (window.pollEvent(event))
     {
         if (event.type == sf::Event::Closed)
+        {
             window.close();
+        }
 
         if (event.type == sf::Event::KeyPressed)
         {
@@ -274,78 +318,32 @@ void Game::events()
 
                 updateMuteText();
             }
-        }
-    }
-
-    if (event.type == sf::Event::KeyPressed)
-    {
-        if (state == GameState::Menu && event.key.code == sf::Keyboard::Enter)
-        {
-            resetGame();
-            menuMusic.stop();
-            playMusic.play();
-            state = GameState::Playing;
-        }
-        else if (state == GameState::GameOver && event.key.code == sf::Keyboard::R)
-        {
-            resetGame();
-            playMusic.play();
-            state = GameState::Playing;
-        }
-        else if (event.key.code == sf::Keyboard::Escape)
-        {
-            state = GameState::Menu;
-            playMusic.stop();
-            menuMusic.play();
-        }
-        else if (state == GameState::Playing && event.key.code == sf::Keyboard::P)
-        {
-            state = GameState::Paused;
-            pauseSound.play();
-            playMusic.pause();
-        }
-        else if (state == GameState::Paused && event.key.code == sf::Keyboard::P)
-        {
-            state = GameState::Playing;
-            pauseSound.play();
-            playMusic.play();
-        }
-        else if (event.key.code == sf::Keyboard::M)
-        {
-            musicMuted = !musicMuted;
-
-            float volume = musicMuted ? 0.f : 40.f;
-            menuMusic.setVolume(volume);
-            playMusic.setVolume(volume);
-
-            updateMuteText();
-        }
-        else if (state == GameState::Playing && !directionChangedThisStep)
-        {
-            if (event.key.code == sf::Keyboard::Left && dir.x != 1)
+            else if (state == GameState::Playing && !directionChangedThisStep)
             {
-                nextDir = { -1, 0 };
-                directionChangedThisStep = true;
-            }
-            else if (event.key.code == sf::Keyboard::Right && dir.x != -1)
-            {
-                nextDir = { 1, 0 };
-                directionChangedThisStep = true;
-            }
-            else if (event.key.code == sf::Keyboard::Up && dir.y != 1)
-            {
-                nextDir = { 0, -1 };
-                directionChangedThisStep = true;
-            }
-            else if (event.key.code == sf::Keyboard::Down && dir.y != -1)
-            {
-                nextDir = { 0, 1 };
-                directionChangedThisStep = true;
+                if (event.key.code == sf::Keyboard::Left && dir.x != 1)
+                {
+                    nextDir = { -1, 0 };
+                    directionChangedThisStep = true;
+                }
+                else if (event.key.code == sf::Keyboard::Right && dir.x != -1)
+                {
+                    nextDir = { 1, 0 };
+                    directionChangedThisStep = true;
+                }
+                else if (event.key.code == sf::Keyboard::Up && dir.y != 1)
+                {
+                    nextDir = { 0, -1 };
+                    directionChangedThisStep = true;
+                }
+                else if (event.key.code == sf::Keyboard::Down && dir.y != -1)
+                {
+                    nextDir = { 0, 1 };
+                    directionChangedThisStep = true;
+                }
             }
         }
     }
 }
-
 // ======================================================
 // UPDATE
 // ======================================================
@@ -356,6 +354,45 @@ void Game::update(float dt)
         return;
 
     timer += dt;
+    lemonAnimTimer += dt;
+
+    if (lemonActive)
+    {
+        lemonLifeTimer += dt;
+
+        float timeLeft = 5.f - lemonLifeTimer;
+        if (timeLeft < 0.f)
+            timeLeft = 0.f;
+
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(2) << timeLeft;
+
+        LemonBonusTitle.setString("Bonus timer: " + ss.str());
+
+        if (lemonLifeTimer >= 5.f)
+        {
+            bonusTimer = false;
+            lemonActive = false;
+            lemonLifeTimer = 0.f;
+        }
+    }
+
+    if (lemonAnimTimer > 0.25f)
+    {
+        lemonFrame++;
+        lemonFrame %= 2;
+
+        lemonSprite.setTextureRect(
+            sf::IntRect(
+                0,
+                lemonFrame * 512,
+                512,
+                512
+            )
+        );
+
+        lemonAnimTimer = 0.f;
+    }
 
     while (timer >= moveDelay)
     {
@@ -377,6 +414,7 @@ void Game::update(float dt)
         }
 
         bool willGrow = (newHead == food);
+        bool willGrowBonus = (newHead == lemon);
         bool hitSelf = isOnSnake(newHead) && !(newHead == snake.back() && !willGrow);
 
         if (hitSelf)
@@ -389,11 +427,13 @@ void Game::update(float dt)
 
         snake.push_front(newHead);
 
-        if (willGrow)
+        if (willGrowBonus)
         {
-            eatingFoodSound.play();
-            food = foodSpawn();
-            score++;
+            bonusOnSound.play();
+            lemon = foodSpawn();
+            lemonActive = false;
+            score+=3;
+            bonusTimer = false;
 
             if (score > pointsRecordValue)
             {
@@ -401,6 +441,38 @@ void Game::update(float dt)
                 updateRecordText();
             }
 
+            scoreText.setString("Score: " + std::to_string(score));
+        }
+
+        if (willGrow)
+        {
+            eatingFoodSound.play();
+            food = foodSpawn();
+            score++;
+            applesSinceBonus++;
+
+
+            if (score > pointsRecordValue)
+            {
+                pointsRecordValue = score;
+                updateRecordText();
+            }
+            if (!lemonActive && applesSinceBonus >= 5)
+            {
+                bonusSound.play();
+                lemon = foodSpawn();
+
+                while (lemon == food)
+                {
+                    lemon = foodSpawn();
+                }
+
+                bonusTimer = true;
+                lemonActive = true;
+                lemonLifeTimer = 0.f;
+
+                applesSinceBonus = 0;
+            }
             scoreText.setString("Score: " + std::to_string(score));
         }
         else
@@ -527,10 +599,23 @@ void Game::render()
                 drawBody(gx, gy, snake[i - 1], snake[i], snake[i + 1]);
             }
         }
+        if (lemonActive)
+        {
+            lemonSprite.setPosition(
+                lemon.x * cellSize,
+                lemon.y * cellSize
+            );
 
+            window.draw(lemonSprite);
+        }
+        if (bonusTimer)
+        {
+            window.draw(LemonBonusTitle);
+        }
         window.draw(scoreText);
         window.draw(pointsRecordText);
         window.draw(muteHintText);
+        
     }
 
     if (state == GameState::Menu)

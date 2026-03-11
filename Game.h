@@ -52,13 +52,17 @@ private:
 
     sf::Text gameOverTitle;
     sf::Text gameOverHint;
+
     sf::Text pauseTitle;
     sf::Text pauseHint;
+
     sf::Text menuTitle;
     sf::Text menuHint;
+
     sf::Text scoreText;
     sf::Text pointsRecordText;
     sf::Text muteHintText;
+    sf::Text LemonBonusTitle; 
 
     sf::RectangleShape overlay;
 
@@ -73,6 +77,10 @@ private:
     sf::Texture snakeTexture;
     sf::Sprite snakeSprite;
 
+    sf::Texture lemonTexture;
+    sf::Sprite lemonSprite;
+    
+
     sf::Texture bgMenuTexture;
     sf::Sprite bgMenuSprite;
 
@@ -85,10 +93,14 @@ private:
     sf::SoundBuffer gameOverBuffer;
     sf::SoundBuffer eatingFoodBuffer;
     sf::SoundBuffer pauseBuffer;
+    sf::SoundBuffer bonusBuffer;
+    sf::SoundBuffer bonusOnBuffer;
 
     sf::Sound eatingFoodSound;
     sf::Sound gameOverSound;
     sf::Sound pauseSound;
+    sf::Sound bonusSound;
+    sf::Sound bonusOnSound;
 
     sf::Music menuMusic;
     sf::Music playMusic;
@@ -108,11 +120,18 @@ private:
     sf::Vector2i nextDir{ 1, 0 };
     bool directionChangedThisStep = false;
     sf::Vector2i food{ 0, 0 };
+    sf::Vector2i lemon{ 0, 0 };
     std::deque<sf::Vector2i> snake;
 
+    int lemonFrame = 0;
+    int applesSinceBonus = 0;
+    float lemonAnimTimer = 0.f;   
+    float lemonLifeTimer = 0.f;   
+    bool lemonActive = false;
     int score = 0;
     int pointsRecordValue = 0;
     bool musicMuted = false;
+    bool bonusTimer = false;
 
     sf::Clock clock;
     float timer = 0.f;
